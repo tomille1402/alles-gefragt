@@ -88,14 +88,18 @@ function Shell({ children }) {
   );
 }
 
-function StepBar({ step }) {
-  const labels = ["Start", "Upload", "Setup", "Interviewer", "Gast", "Abgleich"];
+function StepBar({ step, mode }) {
+  const labels = mode === "guest"
+    ? ["Start", "Upload", "Setup", "Gast", "Abgleich"]
+    : ["Start", "Upload", "Setup", "Interviewer", "Gast", "Abgleich"];
+  // step ist die echte screen-Nummer (0..5); in guest-Modus den Interviewer-Index (3) auslassen
+  const activeIndex = mode === "guest" && step >= 4 ? step - 1 : step;
   return (
     <div style={{ display: "flex", gap: 5, padding: "16px 0 8px", flexWrap: "wrap" }}>
       {labels.map((l, i) => (
         <div key={l} style={{ flex: 1, minWidth: 44 }}>
-          <div style={{ height: 4, borderRadius: 4, background: i <= step ? C.accent : C.line, transition: "background .3s" }} />
-          <div style={{ fontSize: 10, marginTop: 5, textAlign: "center", letterSpacing: ".04em", textTransform: "uppercase", color: i === step ? C.accent : C.muted, fontWeight: i === step ? 700 : 500 }}>{l}</div>
+          <div style={{ height: 4, borderRadius: 4, background: i <= activeIndex ? C.accent : C.line, transition: "background .3s" }} />
+          <div style={{ fontSize: 10, marginTop: 5, textAlign: "center", letterSpacing: ".04em", textTransform: "uppercase", color: i === activeIndex ? C.accent : C.muted, fontWeight: i === activeIndex ? 700 : 500 }}>{l}</div>
         </div>
       ))}
     </div>
@@ -131,30 +135,50 @@ function H({ children, sub }) {
 const inputStyle = { width: "100%", padding: 14, borderRadius: 12, border: `1px solid ${C.line}`, background: C.card, fontFamily: sans, fontSize: 16, color: C.ink, boxSizing: "border-box" };
 
 /* ---------- 1 START ---------- */
-function StartScreen({ onNext, introText, setIntroText, onReset }) {
+function StartScreen({ onNext, introText, setIntroText, onReset, mode, setMode, onArchive, archiveCount }) {
+  const Choice = ({ val, label, desc }) => (
+    <button onClick={() => setMode(val)} style={{
+      flex: 1, textAlign: "left", padding: "14px 14px", borderRadius: 12, cursor: "pointer",
+      background: mode === val ? C.accentSoft : C.card,
+      border: `1px solid ${mode === val ? C.accent : C.line}`, fontFamily: sans,
+    }}>
+      <div style={{ fontWeight: 700, color: mode === val ? C.accent : C.ink, fontSize: 15 }}>{label}</div>
+      <div style={{ fontSize: 12, color: C.muted, marginTop: 3 }}>{desc}</div>
+    </button>
+  );
   return (
     <Shell>
-      <StepBar step={0} />
-      <div style={{ height: "50vh", minHeight: 300, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 4 }}>
+      <StepBar step={0} mode={mode} />
+      <div style={{ height: "42vh", minHeight: 260, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 4 }}>
         <img src={LOGO} alt="Alles gefragt?" style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain", borderRadius: 20, boxShadow: "0 14px 50px rgba(245,197,24,.15)" }} />
       </div>
-      <div style={{ flex: 1, marginTop: 20 }}>
+      <div style={{ flex: 1, marginTop: 18 }}>
+        <label style={{ fontSize: 13, color: C.muted, display: "block", marginBottom: 8, letterSpacing: ".04em", textTransform: "uppercase" }}>Ablauf wählen</label>
+        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+          <Choice val="both" label="Interviewer + Gast" desc="Beide antworten, danach Abgleich" />
+          <Choice val="guest" label="Nur Gast" desc="Nur der Gast antwortet" />
+        </div>
         <label style={{ fontSize: 13, color: C.muted, display: "block", marginBottom: 8, letterSpacing: ".04em", textTransform: "uppercase" }}>Begrüßungstext</label>
         <textarea value={introText} onChange={e => setIntroText(e.target.value)} placeholder="Individueller Text für den Einstieg …"
-          style={{ ...inputStyle, minHeight: 96, resize: "vertical" }} />
+          style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
       </div>
-      <div style={{ marginTop: 20 }}>
+      <div style={{ marginTop: 18 }}>
         <Btn onClick={onNext}>Los geht's →</Btn>
-        <button onClick={onReset} style={{ background: "none", border: "none", color: C.muted, marginTop: 14, width: "100%", cursor: "pointer", fontSize: 13, fontFamily: sans }}>
-          Alles zurücksetzen
-        </button>
+        <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+          <button onClick={onArchive} style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, color: C.ink, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: sans }}>
+            Archiv ({archiveCount})
+          </button>
+          <button onClick={onReset} style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, color: C.muted, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: sans }}>
+            Alles zurücksetzen
+          </button>
+        </div>
       </div>
     </Shell>
   );
 }
 
 /* ---------- 2 UPLOAD ---------- */
-function UploadScreen({ onNext, onBack, questions, setQuestions, resetToDefault }) {
+function UploadScreen({ onNext, onBack, questions, setQuestions, resetToDefault, mode }) {
   const [err, setErr] = useState("");
   const inputRef = useRef();
 
@@ -189,7 +213,7 @@ function UploadScreen({ onNext, onBack, questions, setQuestions, resetToDefault 
 
   return (
     <Shell>
-      <StepBar step={1} />
+      <StepBar step={1} mode={mode} />
       <H sub="Lade eine Excel-Datei mit den Spalten Nr., Frage, A und B hoch. Deine Liste bleibt auf diesem Gerät gespeichert.">Fragen laden</H>
       <div onClick={() => inputRef.current.click()}
         onDragOver={e => e.preventDefault()}
@@ -221,15 +245,17 @@ function UploadScreen({ onNext, onBack, questions, setQuestions, resetToDefault 
 }
 
 /* ---------- 3 SETUP ---------- */
-function SetupScreen({ onNext, onBack, questions, meta, setMeta, selected, setSelected }) {
+function SetupScreen({ onNext, onBack, questions, meta, setMeta, selected, setSelected, mode }) {
   const toggle = (nr) => setSelected(s => s.includes(nr) ? s.filter(x => x !== nr) : [...s, nr]);
   const allSelected = selected.length === questions.length;
   return (
     <Shell>
-      <StepBar step={2} />
+      <StepBar step={2} mode={mode} />
       <H sub="Benenne Interviewer und Gast/Gästin und wähle die Fragen aus.">Interview einrichten</H>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 18 }}>
-        <input value={meta.interview} onChange={e => setMeta({ ...meta, interview: e.target.value })} placeholder="Name des Interviewers" style={inputStyle} />
+        {mode !== "guest" && (
+          <input value={meta.interview} onChange={e => setMeta({ ...meta, interview: e.target.value })} placeholder="Name des Interviewers" style={inputStyle} />
+        )}
         <input value={meta.guest} onChange={e => setMeta({ ...meta, guest: e.target.value })} placeholder="Name des Gastes / der Gästin" style={inputStyle} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -275,22 +301,46 @@ function Radio({ label, checked, onChange, name, tone = C.accent }) {
   );
 }
 
-function AnswerScreen({ step, who, subject, list, answers, setAnswers, onNext, onBack }) {
+function AnswerScreen({ step, who, subject, list, answers, setAnswers, onNext, onBack, mode }) {
+  const total = list.length;
+  const weiterLimit = Math.floor(total * 0.10); // 10% abgerundet
+  const weiterCount = list.filter(q => answers[q.nr] === "W").length;
+  const weiterPct = total ? Math.round((weiterCount / total) * 100) : 0;
+  const overLimit = weiterCount > weiterLimit;
+
   const choose = (nr, val) => setAnswers(a => ({ ...a, [nr]: val }));
   const done = list.every(q => answers[q.nr]);
+
+  const counterColor = overLimit ? C.red : C.muted;
+
   return (
     <Shell>
-      <StepBar step={step} />
-      <H sub={`Eine Antwort pro Frage. ${who === "interviewer" ? "Bitte zuerst vom Interviewer ausfüllen." : "Antworten während des Interviews erfassen."}`}>
-        {who === "interviewer" ? "Interviewer antwortet" : `${subject || "Gast"} antwortet`}
-      </H>
+      <StepBar step={step} mode={mode} />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <H sub={`Eine Antwort pro Frage. ${who === "interviewer" ? "Bitte zuerst vom Interviewer ausfüllen." : "Antworten während des Interviews erfassen."}`}>
+          {who === "interviewer" ? "Interviewer antwortet" : `${subject || "Gast"} antwortet`}
+        </H>
+        {/* LIVE-Zähler oben rechts */}
+        <div style={{ flexShrink: 0, textAlign: "right", border: `1px solid ${overLimit ? C.red : C.line}`, borderRadius: 10, padding: "8px 10px", background: C.card, marginTop: 4 }}>
+          <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em" }}>„weiter“</div>
+          <div style={{ fontFamily: serif, fontSize: 22, color: counterColor, lineHeight: 1.1 }}>{weiterPct}%</div>
+          <div style={{ fontSize: 11, color: counterColor }}>{weiterCount} / {weiterLimit} erlaubt</div>
+        </div>
+      </div>
+
+      {overLimit && (
+        <div style={{ background: "rgba(255,77,77,.12)", border: `1px solid ${C.red}`, color: C.red, borderRadius: 10, padding: "10px 12px", fontSize: 13, marginBottom: 12 }}>
+          Hinweis: „weiter“ sollte bei höchstens {weiterLimit} von {total} Fragen (10 %) gewählt werden. Aktuell sind es {weiterCount}.
+        </div>
+      )}
+
       <div style={gridRow(true)}>
         <div style={{ ...cellHead, textAlign: "left" }}>Frage</div>
         <div style={cellHead}>A</div>
         <div style={cellHead}>B</div>
         <div style={cellHead}>weiter</div>
       </div>
-      <div style={{ overflowY: "auto", maxHeight: "56vh", paddingRight: 2 }}>
+      <div style={{ overflowY: "auto", maxHeight: "52vh", paddingRight: 2 }}>
         {list.map((q) => {
           const v = answers[q.nr];
           return (
@@ -326,10 +376,11 @@ function Stat({ label, value }) {
   );
 }
 
-function CompareScreen({ list, meta, aInt, aGuest, onRestart, onBack, onSave }) {
+function CompareScreen({ list, meta, aInt, aGuest, onRestart, onBack, onSave, mode }) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(meta.date || today);
   const [saved, setSaved] = useState(false);
+  const guestOnly = mode === "guest";
 
   const stats = useMemo(() => {
     let match = 0, skipInt = 0, skipGuest = 0;
@@ -338,20 +389,16 @@ function CompareScreen({ list, meta, aInt, aGuest, onRestart, onBack, onSave }) 
       const i = aInt[q.nr], g = aGuest[q.nr];
       if (i === "W") skipInt++;
       if (g === "W") skipGuest++;
-      // Alle Fragen zählen. Übereinstimmung nur, wenn beide identisch
-      // geantwortet haben (auch beide "weiter" gilt als Übereinstimmung).
       if (i && g && i === g) match++;
     });
     const pct = total ? Math.round((match / total) * 100) : 0;
-    return { match, total, pct, skipInt, skipGuest };
+    const guestWeiterPct = total ? Math.round((skipGuest / total) * 100) : 0;
+    return { match, total, pct, skipInt, skipGuest, guestWeiterPct };
   }, [list, aInt, aGuest]);
 
   const lbl = (q, v) => v === "A" ? q.a : v === "B" ? q.b : v === "W" ? "weiter" : "—";
 
-  const handleSave = () => {
-    onSave({ ...meta, date });
-    setSaved(true);
-  };
+  const handleSave = () => { onSave({ ...meta, date }); setSaved(true); };
 
   const downloadPDF = () => {
     const { jsPDF } = window.jspdf;
@@ -360,26 +407,17 @@ function CompareScreen({ list, meta, aInt, aGuest, onRestart, onBack, onSave }) 
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     let y = margin;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(20);
     doc.text("Alles gefragt?", margin, y); y += 26;
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "normal");
-    if (meta.interview) { doc.text(`Interviewer: ${meta.interview}`, margin, y); y += 16; }
+    doc.setFontSize(12); doc.setFont("helvetica", "normal");
+    if (!guestOnly && meta.interview) { doc.text(`Interviewer: ${meta.interview}`, margin, y); y += 16; }
     doc.text(`Gast / Gästin: ${meta.guest || "—"}`, margin, y); y += 16;
     doc.text(`Datum: ${date}`, margin, y); y += 24;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
     doc.text("Frage", margin, y);
     doc.text("Antwort", pageW - margin, y, { align: "right" }); y += 6;
-    doc.setLineWidth(0.5);
-    doc.line(margin, y, pageW - margin, y); y += 16;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
+    doc.setLineWidth(0.5); doc.line(margin, y, pageW - margin, y); y += 16;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11);
     const colW = pageW - margin * 2 - 120;
     list.forEach(q => {
       const ans = lbl(q, aGuest[q.nr]);
@@ -390,32 +428,60 @@ function CompareScreen({ list, meta, aInt, aGuest, onRestart, onBack, onSave }) 
       doc.text(ans, pageW - margin, y, { align: "right" });
       y += blockH + 6;
     });
-
     const safe = (s) => (s || "interview").replace(/[^\w\-]+/g, "_");
     doc.save(`AllesGefragt_${safe(meta.guest)}_${date}.pdf`);
   };
 
   return (
     <Shell>
-      <StepBar step={5} />
-      <H sub={meta.interview ? `„${meta.interview}“ — mit ${meta.guest || "Gast"}` : "Auswertung des Interviews"}>Abgleich</H>
-      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: "26px 20px", textAlign: "center", marginBottom: 16 }}>
-        <div style={{ fontSize: 13, color: C.muted, letterSpacing: ".05em", textTransform: "uppercase" }}>Übereinstimmung</div>
-        <div style={{ fontFamily: serif, fontSize: 64, fontWeight: 400, color: C.accent, lineHeight: 1 }}>{stats.pct}%</div>
-        <div style={{ fontSize: 14, color: C.muted, marginTop: 6 }}>{stats.match} von {stats.total} Fragen gleich beantwortet</div>
-      </div>
-      <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
-        <Stat label='„weiter“ — Interviewer' value={stats.skipInt} />
-        <Stat label={`„weiter“ — ${meta.guest || "Gast"}`} value={stats.skipGuest} />
-      </div>
-      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "9px 12px", borderBottom: `2px solid ${C.line}`, fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>
-          <span>Frage</span><span>Interv.</span><span>{meta.guest ? meta.guest.split(" ")[0] : "Gast"}</span>
+      <StepBar step={5} mode={mode} />
+      <H sub={meta.interview && !guestOnly ? `„${meta.interview}“ — mit ${meta.guest || "Gast"}` : (meta.guest || "Auswertung des Interviews")}>
+        {guestOnly ? "Auswertung" : "Abgleich"}
+      </H>
+
+      {guestOnly ? (
+        /* NUR GAST: keine Übereinstimmung, nur weiter-Statistik */
+        <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: "26px 20px", textAlign: "center", marginBottom: 16 }}>
+          <div style={{ fontSize: 13, color: C.muted, letterSpacing: ".05em", textTransform: "uppercase" }}>„weiter“-Antworten</div>
+          <div style={{ fontFamily: serif, fontSize: 64, fontWeight: 400, color: C.accent, lineHeight: 1 }}>{stats.guestWeiterPct}%</div>
+          <div style={{ fontSize: 14, color: C.muted, marginTop: 6 }}>{stats.skipGuest} von {stats.total} Fragen mit „weiter“ beantwortet</div>
         </div>
+      ) : (
+        <React.Fragment>
+          <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 18, padding: "26px 20px", textAlign: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: C.muted, letterSpacing: ".05em", textTransform: "uppercase" }}>Übereinstimmung</div>
+            <div style={{ fontFamily: serif, fontSize: 64, fontWeight: 400, color: C.accent, lineHeight: 1 }}>{stats.pct}%</div>
+            <div style={{ fontSize: 14, color: C.muted, marginTop: 6 }}>{stats.match} von {stats.total} Fragen gleich beantwortet</div>
+          </div>
+          <div style={{ display: "flex", gap: 12, marginBottom: 18 }}>
+            <Stat label='„weiter“ — Interviewer' value={stats.skipInt} />
+            <Stat label={`„weiter“ — ${meta.guest || "Gast"}`} value={stats.skipGuest} />
+          </div>
+        </React.Fragment>
+      )}
+
+      <div style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden" }}>
+        {guestOnly ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, padding: "9px 12px", borderBottom: `2px solid ${C.line}`, fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>
+            <span>Frage</span><span>{meta.guest ? meta.guest.split(" ")[0] : "Gast"}</span>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "9px 12px", borderBottom: `2px solid ${C.line}`, fontSize: 11, fontWeight: 700, color: C.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>
+            <span>Frage</span><span>Interv.</span><span>{meta.guest ? meta.guest.split(" ")[0] : "Gast"}</span>
+          </div>
+        )}
         <div style={{ maxHeight: "32vh", overflowY: "auto" }}>
           {list.map(q => {
             const i = aInt[q.nr], g = aGuest[q.nr];
             const same = i && g && i === g;
+            if (guestOnly) {
+              return (
+                <div key={q.nr} style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8, padding: "9px 12px", borderBottom: `1px solid ${C.paper}`, fontSize: 13, alignItems: "center" }}>
+                  <span>{q.frage}</span>
+                  <span style={{ textAlign: "right", color: g === "W" ? C.gold : C.ink }}>{lbl(q, g)}</span>
+                </div>
+              );
+            }
             return (
               <div key={q.nr} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8, padding: "9px 12px", borderBottom: `1px solid ${C.paper}`, fontSize: 13, alignItems: "center", background: same ? "rgba(61,220,132,.12)" : "rgba(255,77,77,.06)" }}>
                 <span>{q.frage}</span>
@@ -452,6 +518,84 @@ function CompareScreen({ list, meta, aInt, aGuest, onRestart, onBack, onSave }) 
   );
 }
 
+/* ---------- ARCHIV ---------- */
+function buildPDF(rec) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const margin = 48;
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  let y = margin;
+  const lbl = (q, v) => v === "A" ? q.a : v === "B" ? q.b : v === "W" ? "weiter" : "—";
+  doc.setFont("helvetica", "bold"); doc.setFontSize(20);
+  doc.text("Alles gefragt?", margin, y); y += 26;
+  doc.setFontSize(12); doc.setFont("helvetica", "normal");
+  if (rec.interview) { doc.text(`Interviewer: ${rec.interview}`, margin, y); y += 16; }
+  doc.text(`Gast / Gästin: ${rec.guest || "—"}`, margin, y); y += 16;
+  doc.text(`Datum: ${rec.date || "—"}`, margin, y); y += 24;
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+  doc.text("Frage", margin, y);
+  doc.text("Antwort", pageW - margin, y, { align: "right" }); y += 6;
+  doc.setLineWidth(0.5); doc.line(margin, y, pageW - margin, y); y += 16;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+  const colW = pageW - margin * 2 - 120;
+  (rec.questions || []).forEach(q => {
+    const ans = lbl(q, rec.aGuest[q.nr]);
+    const lines = doc.splitTextToSize(`${q.nr}. ${q.frage}`, colW);
+    const blockH = lines.length * 14;
+    if (y + blockH > pageH - margin) { doc.addPage(); y = margin; }
+    doc.text(lines, margin, y);
+    doc.text(ans, pageW - margin, y, { align: "right" });
+    y += blockH + 6;
+  });
+  const safe = (s) => (s || "interview").replace(/[^\w\-]+/g, "_");
+  doc.save(`AllesGefragt_${safe(rec.guest)}_${rec.date || ""}.pdf`);
+}
+
+function ArchiveScreen({ items, onDelete, onBack }) {
+  return (
+    <Shell>
+      <div style={{ paddingTop: 18 }} />
+      <H sub={items.length ? `${items.length} gespeicherte${items.length === 1 ? "s" : ""} Interview${items.length === 1 ? "" : "s"}` : "Noch keine Interviews gespeichert."}>Archiv</H>
+
+      {items.length === 0 ? (
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: C.muted, textAlign: "center", padding: "40px 0" }}>
+          Gespeicherte Interviews erscheinen hier — inklusive PDF-Download.
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {items.map(rec => {
+            const total = (rec.questions || []).length;
+            const skipGuest = (rec.questions || []).filter(q => rec.aGuest[q.nr] === "W").length;
+            return (
+              <div key={rec.id} style={{ background: C.card, border: `1px solid ${C.line}`, borderRadius: 12, padding: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 16 }}>{rec.guest || "Ohne Namen"}</div>
+                  <div style={{ fontSize: 12, color: C.muted }}>{rec.date}</div>
+                </div>
+                {rec.interview && <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Interviewer: {rec.interview}</div>}
+                <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>{total} Fragen · {skipGuest}× „weiter“</div>
+                <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                  <button onClick={() => buildPDF(rec)} style={{ flex: 2, background: C.accent, color: "#111", border: "none", padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: sans }}>
+                    PDF herunterladen
+                  </button>
+                  <button onClick={() => onDelete(rec.id)} style={{ flex: 1, background: "none", color: C.red, border: `1px solid ${C.red}`, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 14, fontFamily: sans }}>
+                    Löschen
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div style={{ marginTop: "auto", paddingTop: 24 }}>
+        <Btn variant="ghost" onClick={onBack}>← Zurück zum Start</Btn>
+      </div>
+    </Shell>
+  );
+}
+
 /* ---------- ROOT mit Persistenz ---------- */
 function App() {
   const saved = loadState();
@@ -459,6 +603,7 @@ function App() {
   const [introText, setIntroText] = useState(saved?.introText ?? "Willkommen bei „Alles gefragt?“ — dem Spiel der ehrlichen Antworten.");
   const [questions, setQuestions] = useState(saved?.questions ?? DEFAULT_QUESTIONS);
   const [meta, setMeta] = useState(saved?.meta ?? { interview: "", guest: "" });
+  const [mode, setMode] = useState(saved?.mode ?? "both"); // "both" | "guest"
   const [selected, setSelected] = useState(saved?.selected ?? DEFAULT_QUESTIONS.map(q => q.nr));
   const [aInt, setAInt] = useState(saved?.aInt ?? {});
   const [aGuest, setAGuest] = useState(saved?.aGuest ?? {});
@@ -466,8 +611,8 @@ function App() {
 
   // Bei jeder Änderung alles speichern
   useEffect(() => {
-    saveState({ screen, introText, questions, meta, selected, aInt, aGuest, savedInterviews });
-  }, [screen, introText, questions, meta, selected, aInt, aGuest, savedInterviews]);
+    saveState({ screen, introText, questions, meta, mode, selected, aInt, aGuest, savedInterviews });
+  }, [screen, introText, questions, meta, mode, selected, aInt, aGuest, savedInterviews]);
 
   const selectedList = useMemo(() => questions.filter(q => selected.includes(q.nr)), [questions, selected]);
 
@@ -490,21 +635,27 @@ function App() {
     setSavedInterviews(list => [record, ...list]);
   };
 
+  const deleteInterview = (id) => {
+    if (!confirm("Dieses Interview wirklich löschen?")) return;
+    setSavedInterviews(list => list.filter(r => r.id !== id));
+  };
+
   const fullReset = () => {
     if (!confirm("Wirklich alles zurücksetzen? Fragenliste, Auswahl, Antworten und gespeicherte Interviews werden gelöscht.")) return;
     clearState();
     setScreen(0); setIntroText("Willkommen bei „Alles gefragt?“ — dem Spiel der ehrlichen Antworten.");
-    setQuestions(DEFAULT_QUESTIONS); setMeta({ interview: "", guest: "" });
+    setQuestions(DEFAULT_QUESTIONS); setMeta({ interview: "", guest: "" }); setMode("both");
     setSelected(DEFAULT_QUESTIONS.map(q => q.nr)); setAInt({}); setAGuest({}); setSavedInterviews([]);
   };
 
   switch (screen) {
-    case 0: return <StartScreen introText={introText} setIntroText={setIntroText} onNext={() => setScreen(1)} onReset={fullReset} />;
-    case 1: return <UploadScreen questions={questions} setQuestions={setQuestionsAndSelect} resetToDefault={resetToDefault} onNext={() => setScreen(2)} onBack={() => setScreen(0)} />;
-    case 2: return <SetupScreen questions={questions} meta={meta} setMeta={setMeta} selected={selected} setSelected={setSelected} onNext={() => setScreen(3)} onBack={() => setScreen(1)} />;
-    case 3: return <AnswerScreen step={3} who="interviewer" subject="Interviewer" list={selectedList} answers={aInt} setAnswers={setAInt} onNext={() => setScreen(4)} onBack={() => setScreen(2)} />;
-    case 4: return <AnswerScreen step={4} who="guest" subject={meta.guest} list={selectedList} answers={aGuest} setAnswers={setAGuest} onNext={() => setScreen(5)} onBack={() => setScreen(3)} />;
-    case 5: return <CompareScreen list={selectedList} meta={meta} aInt={aInt} aGuest={aGuest} onRestart={newInterview} onBack={() => setScreen(4)} onSave={saveInterview} />;
+    case "archive": return <ArchiveScreen items={savedInterviews} onDelete={deleteInterview} onBack={() => setScreen(0)} />;
+    case 0: return <StartScreen introText={introText} setIntroText={setIntroText} mode={mode} setMode={setMode} onNext={() => setScreen(1)} onReset={fullReset} onArchive={() => setScreen("archive")} archiveCount={savedInterviews.length} />;
+    case 1: return <UploadScreen questions={questions} setQuestions={setQuestionsAndSelect} resetToDefault={resetToDefault} mode={mode} onNext={() => setScreen(2)} onBack={() => setScreen(0)} />;
+    case 2: return <SetupScreen questions={questions} meta={meta} setMeta={setMeta} selected={selected} setSelected={setSelected} mode={mode} onNext={() => setScreen(mode === "guest" ? 4 : 3)} onBack={() => setScreen(1)} />;
+    case 3: return <AnswerScreen step={3} who="interviewer" subject="Interviewer" list={selectedList} answers={aInt} setAnswers={setAInt} mode={mode} onNext={() => setScreen(4)} onBack={() => setScreen(2)} />;
+    case 4: return <AnswerScreen step={4} who="guest" subject={meta.guest} list={selectedList} answers={aGuest} setAnswers={setAGuest} mode={mode} onNext={() => setScreen(5)} onBack={() => setScreen(mode === "guest" ? 2 : 3)} />;
+    case 5: return <CompareScreen list={selectedList} meta={meta} aInt={aInt} aGuest={aGuest} mode={mode} onRestart={newInterview} onBack={() => setScreen(4)} onSave={saveInterview} />;
     default: return null;
   }
 }
