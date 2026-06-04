@@ -16,8 +16,16 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { margin: 0; padding: 0; background: #0c0c0c; }
+  html, body {
+    margin: 0; padding: 0; background: #0c0c0c;
+    height: 100%; width: 100%;
+    overflow: hidden;                 /* Seite selbst scrollt nicht -> kein Hüpfen */
+    overscroll-behavior: none;        /* kein Bounce am Rand */
+    position: fixed;                  /* verhindert iOS-Rubberband des Body */
+    top: 0; left: 0; right: 0; bottom: 0;
+  }
   body { font-family: 'Newsreader', Georgia, serif; }
+  #root { height: 100%; }
   textarea, input { font-family: inherit; }
   ::-webkit-scrollbar { width: 8px; }
   ::-webkit-scrollbar-thumb { background: #333130; border-radius: 8px; }
@@ -76,13 +84,19 @@ function clearState() {
 function Shell({ children }) {
   return (
     <div style={{
-      minHeight: "100vh", background: C.paper, color: C.ink, fontFamily: sans,
+      height: "100%", background: C.paper, color: C.ink, fontFamily: sans,
       backgroundImage:
         "radial-gradient(circle at 50% 0%, rgba(245,197,24,0.10), transparent 45%)," +
         "radial-gradient(circle at 90% 95%, rgba(245,197,24,0.05), transparent 45%)",
     }}>
-      <div style={{ maxWidth: 560, margin: "0 auto", padding: "0 18px 120px", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        {children}
+      <div style={{
+        maxWidth: 560, margin: "0 auto", padding: "0 18px",
+        height: "100%", display: "flex", flexDirection: "column",
+        overflowY: "auto", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain",
+      }}>
+        <div style={{ paddingBottom: 120, display: "flex", flexDirection: "column", flex: 1 }}>
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -95,7 +109,10 @@ function StepBar({ step, mode }) {
   // step ist die echte screen-Nummer (0..5); in guest-Modus den Interviewer-Index (3) auslassen
   const activeIndex = mode === "guest" && step >= 4 ? step - 1 : step;
   return (
-    <div style={{ display: "flex", gap: 5, padding: "16px 0 8px", flexWrap: "wrap" }}>
+    <div style={{
+      display: "flex", gap: 5, padding: "16px 0 8px", flexWrap: "wrap",
+      position: "sticky", top: 0, zIndex: 10, background: C.paper,
+    }}>
       {labels.map((l, i) => (
         <div key={l} style={{ flex: 1, minWidth: 44 }}>
           <div style={{ height: 4, borderRadius: 4, background: i <= activeIndex ? C.accent : C.line, transition: "background .3s" }} />
@@ -619,7 +636,12 @@ function App() {
   const setQuestionsAndSelect = (q) => { setQuestions(q); setSelected(q.map(x => x.nr)); };
   const resetToDefault = () => setQuestionsAndSelect(DEFAULT_QUESTIONS);
 
-  const newInterview = () => { setScreen(0); setMeta({ interview: "", guest: "" }); setAInt({}); setAGuest({}); };
+  const newInterview = () => {
+    setScreen(0);
+    setMeta({ interview: "", guest: "" });
+    setAInt({});
+    setAGuest({});
+  };
 
   const saveInterview = (metaWithDate) => {
     setMeta(metaWithDate);
@@ -648,11 +670,29 @@ function App() {
     setSelected(DEFAULT_QUESTIONS.map(q => q.nr)); setAInt({}); setAGuest({}); setSavedInterviews([]);
   };
 
+  const startInterview = () => {
+    // Vor Beginn der Befragung alle Antworten zurücksetzen.
+    // Falls schon Antworten existieren (z.B. man ist nur kurz zurückgesprungen),
+    // nachfragen, um versehentliches Löschen zu vermeiden.
+    const hasAnswers = Object.keys(aInt).length > 0 || Object.keys(aGuest).length > 0;
+    if (hasAnswers) {
+      if (confirm("Es sind bereits Antworten vorhanden. Für ein neues Interview werden alle Antworten zurückgesetzt. Fortfahren?")) {
+        setAInt({});
+        setAGuest({});
+      }
+      // Bei „Abbrechen“ bleiben die bestehenden Antworten erhalten.
+    } else {
+      setAInt({});
+      setAGuest({});
+    }
+    setScreen(mode === "guest" ? 4 : 3);
+  };
+
   switch (screen) {
     case "archive": return <ArchiveScreen items={savedInterviews} onDelete={deleteInterview} onBack={() => setScreen(0)} />;
     case 0: return <StartScreen introText={introText} setIntroText={setIntroText} mode={mode} setMode={setMode} onNext={() => setScreen(1)} onReset={fullReset} onArchive={() => setScreen("archive")} archiveCount={savedInterviews.length} />;
     case 1: return <UploadScreen questions={questions} setQuestions={setQuestionsAndSelect} resetToDefault={resetToDefault} mode={mode} onNext={() => setScreen(2)} onBack={() => setScreen(0)} />;
-    case 2: return <SetupScreen questions={questions} meta={meta} setMeta={setMeta} selected={selected} setSelected={setSelected} mode={mode} onNext={() => setScreen(mode === "guest" ? 4 : 3)} onBack={() => setScreen(1)} />;
+    case 2: return <SetupScreen questions={questions} meta={meta} setMeta={setMeta} selected={selected} setSelected={setSelected} mode={mode} onNext={startInterview} onBack={() => setScreen(1)} />;
     case 3: return <AnswerScreen step={3} who="interviewer" subject="Interviewer" list={selectedList} answers={aInt} setAnswers={setAInt} mode={mode} onNext={() => setScreen(4)} onBack={() => setScreen(2)} />;
     case 4: return <AnswerScreen step={4} who="guest" subject={meta.guest} list={selectedList} answers={aGuest} setAnswers={setAGuest} mode={mode} onNext={() => setScreen(5)} onBack={() => setScreen(mode === "guest" ? 2 : 3)} />;
     case 5: return <CompareScreen list={selectedList} meta={meta} aInt={aInt} aGuest={aGuest} mode={mode} onRestart={newInterview} onBack={() => setScreen(4)} onSave={saveInterview} />;
