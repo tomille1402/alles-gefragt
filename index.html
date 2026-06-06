@@ -55,6 +55,7 @@ const T = {
     start_greeting: "Begrüßungstext",
     start_greeting_ph: "Individueller Text für den Einstieg …",
     start_default_greeting: "Willkommen bei „Alles gefragt?“ — dem Spiel der ehrlichen Antworten.",
+    welcome_text: "Willkommen bei „Alles gefragt?“ — dem Spiel der ehrlichen Antworten.",
     start_go: "Los geht's →",
     archive: "Archiv",
     reset_all: "Alles zurücksetzen",
@@ -134,6 +135,7 @@ const T = {
     start_greeting: "Welcome text",
     start_greeting_ph: "A personal text for the intro …",
     start_default_greeting: "Welcome to “Alles gefragt?” — the game of honest answers.",
+    welcome_text: "Welcome to “Asked everything?” — the game of honest answers.",
     start_go: "Let's go →",
     archive: "Archive",
     reset_all: "Reset everything",
@@ -298,23 +300,26 @@ function StartScreen({ onNext, introText, setIntroText, onReset, mode, setMode, 
   return (
     <Shell>
       <LangToggle lang={lang} setLang={setLang} />
-      <div style={{ height: "38vh", minHeight: 230, display: "flex", alignItems: "center", justifyContent: "center", marginTop: 10 }}>
-        <img src={LOGOS[lang]} alt={lang === "en" ? "Asked everything?" : "Alles gefragt?"} style={{ maxHeight: "100%", maxWidth: "100%", objectFit: "contain", borderRadius: 20, boxShadow: "0 14px 50px rgba(245,197,24,.15)" }} />
-      </div>
-      <div style={{ flex: 1, marginTop: 18 }}>
-        <label style={{ fontSize: 13, color: C.muted, display: "block", marginBottom: 8, letterSpacing: ".04em", textTransform: "uppercase" }}>{t.start_flow}</label>
-        <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
-          <Choice val="both" label={t.mode_both} desc={t.mode_both_desc} />
-          <Choice val="guest" label={t.mode_guest} desc={t.mode_guest_desc} />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minHeight: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 0, flexShrink: 1 }}>
+          <img src={LOGOS[lang]} alt={lang === "en" ? "Asked everything?" : "Alles gefragt?"} style={{ maxHeight: "32vh", maxWidth: "100%", objectFit: "contain", borderRadius: 18, boxShadow: "0 14px 50px rgba(245,197,24,.15)" }} />
         </div>
-        <label style={{ fontSize: 13, color: C.muted, display: "block", marginBottom: 8, letterSpacing: ".04em", textTransform: "uppercase" }}>{t.start_greeting}</label>
-        <textarea value={introText} onChange={e => setIntroText(e.target.value)} placeholder={t.start_greeting_ph} style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} />
+        <p style={{ textAlign: "center", color: C.ink, fontSize: 17, lineHeight: 1.35, margin: "16px 4px 0", fontStyle: "italic" }}>
+          {t.welcome_text}
+        </p>
+        <div style={{ marginTop: 20 }}>
+          <label style={{ fontSize: 12, color: C.muted, display: "block", marginBottom: 7, letterSpacing: ".04em", textTransform: "uppercase" }}>{t.start_flow}</label>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Choice val="both" label={t.mode_both} desc={t.mode_both_desc} />
+            <Choice val="guest" label={t.mode_guest} desc={t.mode_guest_desc} />
+          </div>
+        </div>
       </div>
-      <div style={{ marginTop: 18 }}>
+      <div style={{ marginTop: 16, paddingBottom: 4 }}>
         <Btn onClick={onNext}>{t.start_go}</Btn>
-        <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-          <button onClick={onArchive} style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, color: C.ink, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: sans }}>{t.archive} ({archiveCount})</button>
-          <button onClick={onReset} style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, color: C.muted, padding: "10px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: sans }}>{t.reset_all}</button>
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+          <button onClick={onArchive} style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, color: C.ink, padding: "9px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: sans }}>{t.archive} ({archiveCount})</button>
+          <button onClick={onReset} style={{ flex: 1, background: "none", border: `1px solid ${C.line}`, color: C.muted, padding: "9px", borderRadius: 10, cursor: "pointer", fontSize: 13, fontFamily: sans }}>{t.reset_all}</button>
         </div>
       </div>
     </Shell>
