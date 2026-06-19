@@ -6,9 +6,9 @@
 <title>Alles gefragt?</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Newsreader:wght@400;500;600&display=swap" rel="stylesheet">
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -29,7 +29,19 @@
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root"><div style="color:#8a857c;font-family:Georgia,serif;text-align:center;padding:40px 20px;">Lädt …</div></div>
+<script>
+  // Zeigt Fehler sichtbar an, statt nur eine leere Seite zu lassen.
+  window.addEventListener("error", function (e) {
+    var r = document.getElementById("root");
+    if (r && (!r.firstChild || r.innerText.indexOf("Lädt") !== -1)) {
+      r.innerHTML = '<div style="color:#ff4d4d;font-family:Georgia,serif;padding:30px 20px;line-height:1.5;">' +
+        '<b>Es ist ein Fehler aufgetreten.</b><br><br>' +
+        'Bitte die Seite neu laden. Falls das Problem bleibt, prüfe die Internetverbindung (die App lädt einmalig einige Bibliotheken).<br><br>' +
+        '<span style="color:#8a857c;font-size:13px;">Technischer Hinweis: ' + (e && e.message ? e.message : "unbekannt") + '</span></div>';
+    }
+  });
+</script>
 
 <script type="text/babel" data-presets="react">
 const { useState, useMemo, useRef, useEffect } = React;
